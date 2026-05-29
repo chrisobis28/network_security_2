@@ -1,0 +1,8 @@
+
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -p tcp -s 192.168.124.20/32 -j ACCEPT
+-A INPUT -p tcp --syn -j REJECT
+COMMIT

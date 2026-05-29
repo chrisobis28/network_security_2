@@ -1,0 +1,66 @@
+services:
+  attacker:
+    container_name: assignment_4_tcp_hijack_attacker
+    hostname: attacker
+    build:
+      context: .
+      dockerfile: attacker.Dockerfile
+    command: tail -F anything
+    working_dir: /solution
+    volumes:
+      - type: bind
+        source: ./solution
+        target: /solution
+    networks:
+      lab_net_1:
+        ipv4_address: 192.168.124.2
+      lab_net_2:
+        ipv4_address: 192.168.124.18
+
+  host1:
+    container_name: assignment_4_tcp_hijack_host1
+    hostname: host1
+    build:
+      context: ./server
+    command: sh -c "ip route replace default via 192.168.124.2 && /entrypoint.sh"
+    cap_add:
+      - NET_ADMIN
+    networks:
+      lab_net_1:
+        ipv4_address: 192.168.124.10
+    depends_on:
+      attacker:
+        condition: service_started
+
+  host2:
+    container_name: assignment_4_tcp_hijack_host2
+    hostname: host2
+    build:
+      context: ./client
+    command: sh -c "ip route replace default via 192.168.124.18 && python /send_commands.py 192.168.124.10 1337"
+    cap_add:
+      - NET_ADMIN
+    networks:
+      lab_net_2:
+        ipv4_address: 192.168.124.20
+    depends_on:
+      host1:
+        condition: service_started
+      attacker:
+        condition: service_started
+
+networks:
+  lab_net_1:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.124.0/28
+    driver_opts:
+      com.docker.network.bridge.name: assignment_4_1
+  lab_net_2:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.124.16/28
+    driver_opts:
+      com.docker.network.bridge.name: assignment_4_2
