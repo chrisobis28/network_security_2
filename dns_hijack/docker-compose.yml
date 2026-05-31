@@ -1,0 +1,78 @@
+services:
+  attacker:
+    container_name: assignment_5_dns_attacker
+    hostname: attacker
+    build: 
+      context: .
+      dockerfile: attacker.Dockerfile
+    command: tail -F anything
+    working_dir: /solution
+    volumes:
+      - type: bind
+        source: ./solution
+        target: /solution
+    networks:
+      lab_net_1:
+        ipv4_address: 192.168.124.2
+      lab_net_2:
+        ipv4_address: 192.168.124.18
+
+  resolver:
+    container_name: assignment_5_dns_resolver
+    hostname: resolver
+    build: 
+      context: ./resolver
+      dockerfile: resolver.Dockerfile
+    command: sh -c "ip route replace default via 192.168.124.18 && /entrypoint.sh"
+    cap_add:
+      - NET_ADMIN
+    dns:
+      - 192.168.124.11
+    networks:
+      lab_net_2:
+        ipv4_address: 192.168.124.19
+
+  authority:
+    container_name: assignment_5_dns_authority
+    hostname: authority
+    build: 
+      context: ./resolver
+      dockerfile: authority.Dockerfile
+    command: sh -c "ip route replace default via 192.168.124.2 && /entrypoint.sh"
+    cap_add:
+      - NET_ADMIN
+    networks:
+      lab_net_1:
+        ipv4_address: 192.168.124.11
+
+  victim:
+    container_name: assignment_5_dns_victim
+    hostname: victim
+    build: 
+      context: victim
+    command: sh -c "ip route replace default via 192.168.124.18 && /opt/application.py"
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PYTHONUNBUFFERED=1
+    dns:
+      - 192.168.124.19
+    networks:
+      lab_net_2:
+        ipv4_address: 192.168.124.20
+
+networks:
+  lab_net_1:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.124.0/28
+    driver_opts:
+      com.docker.network.bridge.name: assignment_5_1
+  lab_net_2:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.124.16/28
+    driver_opts:
+      com.docker.network.bridge.name: assignment_5_2

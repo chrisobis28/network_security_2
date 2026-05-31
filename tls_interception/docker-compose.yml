@@ -1,0 +1,40 @@
+services:
+  attacker:
+    container_name: assignment_5_tls_attacker
+    hostname: attacker
+    build: 
+      context: .
+      dockerfile: attacker.Dockerfile
+    command: sh -c "iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8443 && iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8443 && tail -F anything"
+    cap_add:
+      - NET_ADMIN
+    working_dir: /solution
+    volumes:
+      - type: bind
+        source: ./solution
+        target: /solution
+    networks:
+      lab_net_1:
+        ipv4_address: 192.168.124.20
+
+  host01:
+    container_name: assignment_5_tls_host01
+    hostname: victim
+    build: 
+      context: .
+      dockerfile: client.Dockerfile
+    command: sh -c "ip route replace default via 192.168.124.20 && tail -F anything"
+    cap_add:
+      - NET_ADMIN
+    networks:
+      lab_net_1:
+        ipv4_address: 192.168.124.10
+
+networks:
+  lab_net_1:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.124.0/24
+    driver_opts:
+      com.docker.network.bridge.name: assignment_5
